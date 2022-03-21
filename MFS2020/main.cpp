@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include <SimConnect.h>
+#include <vector>
 
 int quit = 0;
 HANDLE h_sim_connect = nullptr;
@@ -35,16 +36,17 @@ struct data_define {
 };
 
 
-struct request {
+struct request_data {
 	static int id;
-	static int data_define_id;
+	vector<data_define>* data_defined_group;
 
-	request() {
-		id++;
+	explicit request_data(vector<data_define>* data_defined_group) : data_defined_group(data_defined_group)
+	{
+		request_data::id++;
 	}
 };
 
-// To make a data request we will need:
+// To make a data request_data we will need:
 enum data_define_id {
 	definition_1,
 };
@@ -87,7 +89,7 @@ void CALLBACK my_dispatch_proc1(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_
 		{
 		case REQUEST_1:
 
-			// Cast the request data to a SimResponse (our defined struct)
+			// Cast the request_data data to a SimResponse (our defined struct)
 			const auto* p_s = reinterpret_cast<sim_response*>(&p_obj_data->dwData);
 
 			// DO WHATEVER YOU WANT WITH THE DATA (FOR SIMPLICITY WE WILL JUST PRINT IT TO THE CONSOLE)
@@ -142,7 +144,7 @@ bool initSimEvents() {
 
 		// REQUESTING OUR DATA
 
-		// #IMPORTANT: the request order must follow the declaration order of the response struct!!
+		// #IMPORTANT: the request_data order must follow the declaration order of the response struct!!
 		// SimConnect_AddToDataDefinition takes:HANDLE, enum DEFINITION_ID, const char* DATA_NAME, const char* UNIT, DATATYPE (DEFAULT IS FLOAT64)
 		HRESULT hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "INDICATED ALTITUDE", "feet");
 		hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "HEADING INDICATOR", "degrees", SIMCONNECT_DATATYPE_INT32);
@@ -174,11 +176,14 @@ bool initSimEvents() {
 int main() {
 	//initSimEvents();
 
-
 	int request_1 = 1;
 	constexpr int data_group_1 = 1;
 
-	auto indicated_altitude = data_define(data_group_1, "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
+	const auto indicated_altitude = data_define(data_group_1, "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
+
+	vector<data_define> group = {indicated_altitude};
+	auto r1 = request_data(&group);
+
 
 	return 0;
 }
