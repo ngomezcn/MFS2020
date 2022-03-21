@@ -246,12 +246,6 @@ bool initSimEvents()
 	return false;
 }
 
-class aircraft
-{
-public:
-	double* airspeed = nullptr;
-};
-
 
 struct zz
 {
@@ -260,7 +254,6 @@ struct zz
 };
 
 
-double arr[] = { 4313.213, 123123.123 };
 void CALLBACK dispatch(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_context)
 {
 	switch (p_data->dwID)
@@ -316,9 +309,12 @@ void CALLBACK dispatch(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_context)
 }
 
 
+
 int main()
 {
 	//initSimEvents();
+
+	auto plane = aircraft();
 
 	// Sample
 	const auto indicated_altitude = data_define("INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
