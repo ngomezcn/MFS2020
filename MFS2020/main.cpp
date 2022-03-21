@@ -1,3 +1,4 @@
+#include <functional>
 #include <windows.h>
 #include <iostream>
 
@@ -42,39 +43,57 @@ public:
 	}
 };
 
-
-struct request_data
+enum data_define_id
 {
-	int request_id = 10;
+	DEFINITION_1,
+};
 
-	HANDLE h_sim_connect;
-	const int definition_id;
-	vector<data_define>* data_defined_group;
+enum data_request_id
+{
+	REQUEST_1,
+};
+
+struct data_request
+{
+	data_request_id request_id;
+	data_define_id definition_id;
+
+	vector<data_define>* defined_data;
 	SIMCONNECT_PERIOD update_period;
 	HRESULT hr;
 
-	request_data(const HANDLE h_sim_connect, const int data_define_id, vector<data_define>* data_defined_group,
+	HANDLE h_sim_connect;
+
+
+	data_request(data_request_id request_id, data_define_id data_define_id, vector<data_define>* data_defined_group,
 	             const SIMCONNECT_PERIOD update_period = SIMCONNECT_PERIOD_VISUAL_FRAME) :
-		h_sim_connect(h_sim_connect), definition_id(data_define_id), data_defined_group(data_defined_group),
+		request_id(request_id), definition_id(data_define_id), defined_data(data_defined_group),
 		update_period(update_period)
 	{
-		request_id++;
+	}
+
+	void load_request(const HANDLE h_sim_connect)
+	{
+		this->h_sim_connect = h_sim_connect;
 		add_data_definition();
 		request_data_on_sim_object();
 	}
 
 	void add_data_definition()
 	{
-		hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_id, "Airspeed Indicated", "knots",
-			SIMCONNECT_DATATYPE_INT32);
+		for (int i = 0; i <= defined_data->size()-1; i++)
+		{
 
-		if (!hr)
-		{
-			cout << "added definition successfully" << endl;
-		}
-		else
-		{
-			cout << "failed adding definition data" << endl;
+			hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_id, (*defined_data)[i].datum_name, (*defined_data)[i].units_name);
+
+			if (!hr)
+			{
+				cout << "added definition successfully" << endl;
+			}
+			else
+			{
+				cout << "failed adding definition data" << endl;
+			}
 		}
 	}
 
@@ -96,19 +115,6 @@ struct request_data
 	{
 		hr = SimConnect_Close(h_sim_connect);
 	}
-};
-
-
-// To make a data request_data we will need:
-enum data_define_id
-{
-	definition_1,
-};
-
-enum data_request_id
-{
-	REQUEST_1,
-	// ... (we can use different requests to organize our response data)
 };
 
 // We group our events to prioritize them (in this case we'll play only with the brake event)
@@ -148,7 +154,7 @@ void CALLBACK my_dispatch_proc1(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_
 			{
 			case REQUEST_1:
 
-				// Cast the request_data data to a SimResponse (our defined struct)
+				// Cast the data_request data to a SimResponse (our defined struct)
 				const auto* p_s = reinterpret_cast<sim_response*>(&p_obj_data->dwData);
 
 			// DO WHATEVER YOU WANT WITH THE DATA (FOR SIMPLICITY WE WILL JUST PRINT IT TO THE CONSOLE)
@@ -207,18 +213,18 @@ bool initSimEvents()
 
 		// REQUESTING OUR DATA
 
-		// #IMPORTANT: the request_data order must follow the declaration order of the response struct!!
+		// #IMPORTANT: the data_request order must follow the declaration order of the response struct!!
 		// SimConnect_AddToDataDefinition takes:HANDLE, enum DEFINITION_ID, const char* DATA_NAME, const char* UNIT, DATATYPE (DEFAULT IS FLOAT64)
-		HRESULT hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "INDICATED ALTITUDE", "feet");
-		hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "HEADING INDICATOR", "degrees",
+		HRESULT hr = SimConnect_AddToDataDefinition(h_sim_connect, DEFINITION_1, "INDICATED ALTITUDE", "feet");
+		hr = SimConnect_AddToDataDefinition(h_sim_connect, DEFINITION_1, "HEADING INDICATOR", "degrees",
 		                                    SIMCONNECT_DATATYPE_INT32);
-		hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "Airspeed Indicated", "knots",
+		hr = SimConnect_AddToDataDefinition(h_sim_connect, DEFINITION_1, "Airspeed Indicated", "knots",
 		                                    SIMCONNECT_DATATYPE_INT32);
-		hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "VERTICAL SPEED", "Feet per second",
+		hr = SimConnect_AddToDataDefinition(h_sim_connect, DEFINITION_1, "VERTICAL SPEED", "Feet per second",
 		                                    SIMCONNECT_DATATYPE_INT32);
 
 		// EVERY SECOND REQUEST DATA FOR DEFINITION 1 ON THE CURRENT USER AIRCRAFT (SIMCONNECT_OBJECT_ID_USER)
-		hr = SimConnect_RequestDataOnSimObject(h_sim_connect, REQUEST_1, definition_1, SIMCONNECT_OBJECT_ID_USER,
+		hr = SimConnect_RequestDataOnSimObject(h_sim_connect, REQUEST_1, DEFINITION_1, SIMCONNECT_OBJECT_ID_USER,
 		                                       SIMCONNECT_PERIOD_VISUAL_FRAME);
 
 		RegisterClientEvents(hr);
@@ -240,6 +246,13 @@ bool initSimEvents()
 	return false;
 }
 
+struct  zz
+{
+	double a;
+	double b;
+};
+
+double* arr[2];
 
 void CALLBACK dispatch(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_context)
 {
@@ -253,20 +266,36 @@ void CALLBACK dispatch(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_context)
 			// SWITCH TO FIND THE RIGHT REQUEST (IF THERE WAS MORE THAN ONE REQUEST THERE WOULD BE ANOTHER CASE)
 			//cout << "p_obj_data->dwRequestID: " << p_obj_data->dwRequestID << endl;
 
+
 			switch (p_obj_data->dwRequestID)
 			{
-			case 11:
+			case REQUEST_1:
 
-				// Cast the request_data data to a SimResponse (our defined struct)
-				const auto* p_s = reinterpret_cast<int32_t*>(&p_obj_data->dwData);
-				cout << *p_s << endl;
-				// DO WHATEVER YOU WANT WITH THE DATA (FOR SIMPLICITY WE WILL JUST PRINT IT TO THE CONSOLE)
-				/*cout
-					<< "\rAltitude: " << p_s->altitude
-					<< " - Heading: " << p_s->heading
-					<< " - Speed (knots): " << p_s->speed
-					<< " - Vertical Speed: " << p_s->vertical_speed
-					<< flush;*/
+				// Cast the data_request data to a SimResponse (our defined struct)
+				//auto p_s = (double*)&p_obj_data->dwData;
+				//cout << *p_s << endl;
+				auto p_s = (double*) & p_obj_data->dwData;
+
+
+				//auto a = (double*)&p_obj_data->dwData;
+				//cout << *a << endl;
+
+				cout << "\r" << p_s->a << "- " << p_s->b << flush;
+			//vec[i] = *p_s;
+
+			//cout << vec[0] << endl;
+
+
+			//cout << (*p_s)[0] << endl;
+
+
+			// DO WHATEVER YOU WANT WITH THE DATA (FOR SIMPLICITY WE WILL JUST PRINT IT TO THE CONSOLE)
+			/*cout
+				<< "\rAltitude: " << p_s->altitude
+				<< " - Heading: " << p_s->heading
+				<< " - Speed (knots): " << p_s->speed
+				<< " - Vertical Speed: " << p_s->vertical_speed
+				<< flush;*/
 				break;
 			}
 			break;
@@ -279,23 +308,23 @@ void CALLBACK dispatch(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_context)
 	}
 }
 
+
 int main()
 {
 	//initSimEvents();
 
 
 	// Sample
-
-	constexpr int data_group_id = 1;
 	const auto indicated_altitude = data_define("INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
-	vector<data_define> group1 = {indicated_altitude};
+	const auto speed = data_define("Airspeed Indicated", "knots", SIMCONNECT_DATATYPE_FLOAT64);
+	vector<data_define> group1 = {indicated_altitude, speed};
 
+	auto r1 = data_request(REQUEST_1, DEFINITION_1, &group1, SIMCONNECT_PERIOD_VISUAL_FRAME);
 
 	if (SUCCEEDED(SimConnect_Open(&h_sim_connect, "Client Event Demo", NULL, 0, NULL, 0)))
 	{
 		cout << "init" << endl;
-		auto r1 = request_data(h_sim_connect, data_group_id, &group1, SIMCONNECT_PERIOD_VISUAL_FRAME);
-
+		r1.load_request(h_sim_connect);
 
 		while (quit == 0)
 		{
