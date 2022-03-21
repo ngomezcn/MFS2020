@@ -10,7 +10,7 @@ HANDLE h_sim_connect = nullptr;
 using namespace std;
 
 struct data_define {
-	const int define_id;
+public:
 	const char*   datum_name; // file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimVars/Simulation_Variables.htm
 	const char*   units_name; // file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimVars/Simulation_Variable_Units.htm
 	SIMCONNECT_DATATYPE datum_type; // file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimConnect/API_Reference/Structures_And_Enumerations/SIMCONNECT_DATATYPE.htm
@@ -27,8 +27,7 @@ struct data_define {
 	*/
 	float f_epsilon;
 
-	data_define(const int define_id, const char* datum_name, const char* units_name, const SIMCONNECT_DATATYPE datum_type = SIMCONNECT_DATATYPE_FLOAT64, const float f_epsilon = 0) :
-		define_id(define_id),
+	data_define(const char* datum_name, const char* units_name, const SIMCONNECT_DATATYPE datum_type = SIMCONNECT_DATATYPE_FLOAT64, const float f_epsilon = 0) :
 		datum_name(datum_name),
 		units_name(units_name),
 		datum_type(datum_type),
@@ -37,14 +36,37 @@ struct data_define {
 
 
 struct request_data {
-	static int id;
-	vector<data_define>* data_defined_group;
+	static int request_id;
 
-	explicit request_data(vector<data_define>* data_defined_group) : data_defined_group(data_defined_group)
+	HANDLE h_sim_connect;
+	const int data_define_id;
+	vector<data_define>* data_defined_group;
+	SIMCONNECT_PERIOD update_period;
+	HRESULT hr;
+
+	void request_data_on_sim_object() 
 	{
-		request_data::id++;
+		hr = SimConnect_RequestDataOnSimObject(h_sim_connect, request_id, data_define_id, SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD_VISUAL_FRAME);
 	}
+
+	request_data(const HANDLE h_sim_connect, const int data_define_id, vector<data_define>* data_defined_group,
+	                      const SIMCONNECT_PERIOD update_period  = SIMCONNECT_PERIOD_VISUAL_FRAME)  :
+	h_sim_connect(h_sim_connect), data_define_id(data_define_id), data_defined_group(data_defined_group),
+		update_period(update_period)
+	{
+		request_data::request_id++;
+		request_data_on_sim_object();
+
+	}
+
+	void add_data_definition()
+	{
+
+		hr = SimConnect_AddToDataDefinition(h_sim_connect, data_define_id, "HEADING INDICATOR", "degrees", SIMCONNECT_DATATYPE_INT32);
+	}
+	
 };
+
 
 // To make a data request_data we will need:
 enum data_define_id {
@@ -176,14 +198,16 @@ bool initSimEvents() {
 int main() {
 	//initSimEvents();
 
-	int request_1 = 1;
-	constexpr int data_group_1 = 1;
 
-	const auto indicated_altitude = data_define(data_group_1, "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
-
-	vector<data_define> group = {indicated_altitude};
-	auto r1 = request_data(&group);
+	// Sample
+	constexpr int data_group_id = 1;
+	const auto indicated_altitude = data_define( "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
+	vector<data_define> group1 = { indicated_altitude };
 
 
+	if (SUCCEEDED(SimConnect_Open(&h_sim_connect, "Client Event Demo", NULL, 0, NULL, 0))) {
+		auto r1 = request_data(h_sim_connect, data_group_id, &group1, SIMCONNECT_PERIOD_VISUAL_FRAME);
+
+	}
 	return 0;
 }
