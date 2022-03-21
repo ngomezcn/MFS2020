@@ -246,14 +246,21 @@ bool initSimEvents()
 	return false;
 }
 
-struct  zz
+class aircraft
 {
-	double a;
-	double b;
+public:
+	double* airspeed = nullptr;
 };
 
-double* arr[2];
 
+struct zz
+{
+	double airspeed = ;
+	double speed = SIMCONNECT_DATATYPE_FLOAT64;
+};
+
+
+double arr[] = { 4313.213, 123123.123 };
 void CALLBACK dispatch(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_context)
 {
 	switch (p_data->dwID)
@@ -274,13 +281,13 @@ void CALLBACK dispatch(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_context)
 				// Cast the data_request data to a SimResponse (our defined struct)
 				//auto p_s = (double*)&p_obj_data->dwData;
 				//cout << *p_s << endl;
-				auto p_s = (double*) & p_obj_data->dwData;
+				
+				auto p_s = (zz*)&p_obj_data->dwData;
+				cout << p_s->altitude << endl;
 
 
-				//auto a = (double*)&p_obj_data->dwData;
-				//cout << *a << endl;
-
-				cout << "\r" << p_s->a << "- " << p_s->b << flush;
+				//auto p_s = (double) & p_obj_data->dwData;
+				//auto a = new double[2];
 			//vec[i] = *p_s;
 
 			//cout << vec[0] << endl;
@@ -312,7 +319,6 @@ void CALLBACK dispatch(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_context)
 int main()
 {
 	//initSimEvents();
-
 
 	// Sample
 	const auto indicated_altitude = data_define("INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
