@@ -9,12 +9,11 @@ HANDLE h_sim_connect = nullptr;
 using namespace std;
 
 struct data_define {
-	int define_id;
-	string datum_name; // file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimVars/Simulation_Variables.htm
-	string units_name; // file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimVars/Simulation_Variable_Units.htm
+	const int define_id;
+	const char*   datum_name; // file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimVars/Simulation_Variables.htm
+	const char*   units_name; // file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimVars/Simulation_Variable_Units.htm
 	SIMCONNECT_DATATYPE datum_type; // file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimConnect/API_Reference/Structures_And_Enumerations/SIMCONNECT_DATATYPE.htm
 	
-	float f_epsilon = 0;
 	/*
 		If data is requested only when it changes(see the flags parameter of SimConnect_RequestDataOnSimObject) a change 
 		will only be reported if it is greater than the value of this parameter(not greater than or equal to).
@@ -25,11 +24,16 @@ struct data_define {
 
 		SimConnect_RequestDataOnSimObject: file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimConnect/API_Reference/Events_And_Data/SimConnect_RequestDataOnSimObject.htm
 	*/
+	float f_epsilon;
 
-	data_define(): define_id(0), datum_type()
-	{
-	}
+	data_define(const int define_id, const char* datum_name, const char* units_name, const SIMCONNECT_DATATYPE datum_type = SIMCONNECT_DATATYPE_FLOAT64, const float f_epsilon = 0) :
+		define_id(define_id),
+		datum_name(datum_name),
+		units_name(units_name),
+		datum_type(datum_type),
+		f_epsilon(f_epsilon){}
 };
+
 
 struct request {
 	static int id;
@@ -41,21 +45,21 @@ struct request {
 };
 
 // To make a data request we will need:
-static enum data_define_id {
+enum data_define_id {
 	definition_1,
 };
 
-static enum data_request_id {
+enum data_request_id {
 	REQUEST_1,
 	// ... (we can use different requests to organize our response data)
 };
 
 // We group our events to prioritize them (in this case we'll play only with the brake event)
-static enum group_id {
+enum group_id {
 	group0
 };
 
-static enum event_id {
+enum event_id {
 	key_brakes, // I can call this whatever I want, the important thing is the STRING
 };
 
@@ -117,7 +121,6 @@ void CALLBACK my_dispatch_proc1(SIMCONNECT_RECV* p_data, DWORD cb_data, void* p_
 		}
 		break;
 	}
-
 	default:
 		break;
 	}
@@ -133,8 +136,6 @@ void RegisterClientEvents(HRESULT hr) {
 }
 
 bool initSimEvents() {
-	HRESULT hr;
-
 	// If connected to SimConnect displays a success message and return true
 	if (SUCCEEDED(SimConnect_Open(&h_sim_connect, "Client Event Demo", NULL, 0, NULL, 0))) {
 		std::cout << "\nConnected To Microsoft Flight Simulator 2020!\n";
@@ -143,7 +144,7 @@ bool initSimEvents() {
 
 		// #IMPORTANT: the request order must follow the declaration order of the response struct!!
 		// SimConnect_AddToDataDefinition takes:HANDLE, enum DEFINITION_ID, const char* DATA_NAME, const char* UNIT, DATATYPE (DEFAULT IS FLOAT64)
-		hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "INDICATED ALTITUDE", "feet");
+		HRESULT hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "INDICATED ALTITUDE", "feet");
 		hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "HEADING INDICATOR", "degrees", SIMCONNECT_DATATYPE_INT32);
 		hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "Airspeed Indicated", "knots", SIMCONNECT_DATATYPE_INT32);
 		hr = SimConnect_AddToDataDefinition(h_sim_connect, definition_1, "VERTICAL SPEED", "Feet per second", SIMCONNECT_DATATYPE_INT32);
@@ -151,9 +152,7 @@ bool initSimEvents() {
 		// EVERY SECOND REQUEST DATA FOR DEFINITION 1 ON THE CURRENT USER AIRCRAFT (SIMCONNECT_OBJECT_ID_USER)
 		hr = SimConnect_RequestDataOnSimObject(h_sim_connect, REQUEST_1, definition_1, SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD_VISUAL_FRAME);
 
-
 		RegisterClientEvents(hr);
-
 
 		// Process incoming SimConnect Server messages while the app is running
 		while (quit == 0) {
@@ -173,7 +172,13 @@ bool initSimEvents() {
 }
 
 int main() {
-	initSimEvents();
+	//initSimEvents();
+
+
+	int request_1 = 1;
+	constexpr int data_group_1 = 1;
+
+	auto indicated_altitude = data_define(data_group_1, "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
 
 	return 0;
 }
