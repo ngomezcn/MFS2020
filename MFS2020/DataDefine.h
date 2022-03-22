@@ -2,10 +2,10 @@
 #define _DATADEFINE_H_
 
 #include <SimConnect.h>
-
 class DataDefine
 {
 public:
+
 	const char* datum_name;
 	// file:///C:/MSFS%20SDK/Documentation/html/Programming_Tools/SimVars/Simulation_Variables.htm
 	const char* units_name;
@@ -25,8 +25,7 @@ public:
 	*/
 	float f_epsilon;
 
-	DataDefine(const char* datum_name, const char* units_name,
-		const SIMCONNECT_DATATYPE datum_type = SIMCONNECT_DATATYPE_FLOAT64, const float f_epsilon = 0);
+	DataDefine(const char* datum_name, const char* units_name, const SIMCONNECT_DATATYPE datum_type, const float f_epsilon = 0);
 };
 
 #endif // _DATADEFINE_H_

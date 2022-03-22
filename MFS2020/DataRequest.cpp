@@ -2,11 +2,15 @@
 
 #include <iostream>
 
-DataRequest::DataRequest(std::vector<DataDefine>& data_defined_group, SIMCONNECT_PERIOD update_period) : defined_data(data_defined_group), update_period(update_period)
-{
-	request_id++;
-	definition_id++;
-}
+int DataRequest::request_id = 0;
+int DataRequest::definition_id = 0;
+
+// Constructors
+DataRequest::DataRequest(std::vector<DataDefine>& data_defined_group, SIMCONNECT_PERIOD update_period) :
+	defined_data(data_defined_group), update_period(update_period) { request_id++; definition_id++; }
+
+
+// Methods
 void DataRequest::init(HANDLE* sim_connect_handler)
 {
 	this->h_sim_connect = sim_connect_handler;

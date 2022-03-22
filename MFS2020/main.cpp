@@ -6,53 +6,70 @@
 #include "DataDefine.h"
 #include "DataRequest.h"
 
-
 int quit = 0;
+SIMCONNECT_RECV* p_data;
+DWORD cb_data;
 HANDLE h_sim_connect = nullptr;
 
-int DataRequest::request_id = 0;
-int DataRequest::definition_id = 0;
+
+namespace sv
+{
+	//SimVar indicated_altitude;
+	//SimVar knots;
+}
+
+// SimVars
+auto indicated_altitude = DataDefine("INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
+auto knots = DataDefine("Airspeed Indicated", "knots", SIMCONNECT_DATATYPE_FLOAT64);
+
+// SimVars Groups
+namespace defined_data_group
+{
+	std::vector flight_model = {indicated_altitude, knots};
+}
+
+// Requests
+auto r1 = DataRequest(defined_data_group::flight_model, SIMCONNECT_PERIOD_VISUAL_FRAME);
+
 int main()
 {
-	// Sample
-	const auto indicated_altitude = DataDefine("INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE_FLOAT64);
-	const auto speed = DataDefine("Airspeed Indicated", "knots", SIMCONNECT_DATATYPE_FLOAT64);
-
-	std::vector req_sim_vars = {indicated_altitude, speed};
-	if (SUCCEEDED(SimConnect_Open(&h_sim_connect, "Client Event Demo", NULL, 0, NULL, 0)))
+	HRESULT sc_open = SimConnect_Open(&h_sim_connect, "Client Event Demo", nullptr, 0, nullptr, 0);
+	while (!SUCCEEDED(sc_open))
 	{
-		std::cout << "init" << std::endl;
-		auto r1 = DataRequest(req_sim_vars, SIMCONNECT_PERIOD_VISUAL_FRAME);
-		r1.init(&h_sim_connect);
+		sc_open = SimConnect_Open(&h_sim_connect, "Client Event Demo", nullptr, 0, nullptr, 0);
 
-		SIMCONNECT_RECV* p_data;
-		DWORD cb_data;
+		std::cout << "Awaiting to connect with Flight Simulator 2020...." << std::endl;
+		Sleep(1000);
+	}
+	std::cout << "Connected to Flight Simulator 2020!" << std::endl;
 
-		while (quit == 0)
+	// Send request to fs2020
+	r1.init(&h_sim_connect);
+
+	while (quit == 0)
+	{
+		HRESULT sc_dispatch = SimConnect_GetNextDispatch(h_sim_connect, &p_data, &cb_data);
+		if (SUCCEEDED(sc_dispatch))
 		{
-			const HRESULT dispatch_response = SimConnect_GetNextDispatch(h_sim_connect, &p_data, &cb_data);
-			if (SUCCEEDED(dispatch_response))
+			switch (p_data->dwID)
 			{
-				switch (p_data->dwID)
+			case SIMCONNECT_RECV_ID_SIMOBJECT_DATA:
 				{
-				case SIMCONNECT_RECV_ID_SIMOBJECT_DATA:
+					auto* p_obj_data = reinterpret_cast<SIMCONNECT_RECV_SIMOBJECT_DATA*>(p_data);
+					switch (p_obj_data->dwRequestID)
 					{
-						auto* p_obj_data = reinterpret_cast<SIMCONNECT_RECV_SIMOBJECT_DATA*>(p_data);
-						switch (p_obj_data->dwRequestID)
+					case 1:
 						{
-						case 1:
-							{
-								const auto p_s = reinterpret_cast<double*>(&p_obj_data->dwData);
-								std::cout << *p_s << " - " << *p_s << std::endl;
-								break;
-							}
+							auto p_s = reinterpret_cast<double*>(&p_obj_data->dwData);
+							std::cout << *p_s << " - " << *p_s << std::endl;
+							break;
 						}
 					}
 				}
 			}
 		}
-		r1.close();
-
-		return 0;
 	}
+	r1.close();
+
+	return 0;
 }
