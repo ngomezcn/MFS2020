@@ -51,6 +51,7 @@ int main()
 		HRESULT sc_dispatch = SimConnect_GetNextDispatch(h_sim_connect, &p_data, &cb_data);
 		if (SUCCEEDED(sc_dispatch))
 		{
+
 			switch (p_data->dwID)
 			{
 			case SIMCONNECT_RECV_ID_SIMOBJECT_DATA:
